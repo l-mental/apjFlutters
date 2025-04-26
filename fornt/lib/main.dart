@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import './screens/products_screen.dart'; // Ruta relativa correcta
 import './screens/products_screen.dart';
 
 void main() {

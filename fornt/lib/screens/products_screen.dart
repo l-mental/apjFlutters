@@ -1,22 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../services/api_service.dart';
-import '../../models/product.dart';
-import '../../widgets/product_card.dart';
-import '../../widgets/custom_appbar.dart';
-import '../../widgets/loading_indicator.dart';
+import '../services/api_service.dart';
+import 'edit_product_screen.dart'; // Nueva pantalla
 
 class ProductsScreen extends StatefulWidget {
-  const ProductsScreen({super.key});
-
+  const ProductsScreen({super.key}); 
   @override
-  State<ProductsScreen> createState() => _ProductsScreenState();
+  _ProductsScreenState createState() => _ProductsScreenState();
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
-  late Future<List<Product>> _productsFuture;
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _priceController = TextEditingController();
-  final TextEditingController _stockController = TextEditingController();
+  late Future<List<dynamic>> futureProducts;
 
   @override
   void initState() {
@@ -24,135 +17,84 @@ class _ProductsScreenState extends State<ProductsScreen> {
     _loadProducts();
   }
 
-  void _loadProducts() {
+  Future<void> _loadProducts() async {
     setState(() {
-      _productsFuture = ApiService.getProducts();
+      futureProducts = ApiService.getProducts();
     });
+  }
+
+  Future<void> _deleteProduct(int id) async {
+    try {
+      await ApiService.deleteProduct(id);
+      _loadProducts(); // Recargar lista
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Producto eliminado')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(title: 'Productos'),
-      body: FutureBuilder<List<Product>>(
-        future: _productsFuture,
+      appBar: AppBar(
+        title: Text('Productos'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: () => _navigateToEditProduct(context, null),
+          ),
+        ],
+      ),
+      body: FutureBuilder<List<dynamic>>(
+        future: futureProducts,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const LoadingIndicator(message: 'Cargando productos...');
+            return Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(child: Text('No hay productos'));
           } else {
-            final products = snapshot.data!;
             return ListView.builder(
-              itemCount: products.length,
+              itemCount: snapshot.data!.length,
               itemBuilder: (context, index) {
-                return ProductCard(
-                  product: products[index],
-                  onTap: () => _showEditDialog(context, products[index]),
+                final product = snapshot.data![index];
+                return ListTile(
+                  title: Text(product['name']),
+                  subtitle: Text('Stock: ${product['stock']} | Precio: \$${product['price']}'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () => _navigateToEditProduct(context, product),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteProduct(product['id']),
+                      ),
+                    ],
+                  ),
                 );
               },
             );
           }
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () => _showAddDialog(context),
+    );
+  }
+
+  void _navigateToEditProduct(BuildContext context, dynamic product) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProductScreen(product: product),
       ),
     );
-  }
-
-  void _showAddDialog(BuildContext context) {
-    _clearControllers();
-    _showProductDialog(
-      context,
-      title: 'Agregar Producto',
-      onSave: () async {
-        final product = Product(
-          id: 0, // El backend asignará ID
-          name: _nameController.text,
-          price: double.parse(_priceController.text),
-          stock: int.parse(_stockController.text),
-        );
-        await ApiService.addProduct(product);
-        _loadProducts();
-      },
-    );
-  }
-
-  void _showEditDialog(BuildContext context, Product product) {
-    _nameController.text = product.name;
-    _priceController.text = product.price.toString();
-    _stockController.text = product.stock.toString();
-    
-    _showProductDialog(
-      context,
-      title: 'Editar Producto',
-      onSave: () {
-        // Implementar lógica de actualización
-        _loadProducts();
-      },
-    );
-  }
-
-  void _showProductDialog(
-    BuildContext context, {
-    required String title,
-    required VoidCallback onSave,
-  }) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nombre'),
-              ),
-              TextField(
-                controller: _priceController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Precio'),
-              ),
-              TextField(
-                controller: _stockController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Stock'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              onSave();
-              Navigator.pop(context);
-            },
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _clearControllers() {
-    _nameController.clear();
-    _priceController.clear();
-    _stockController.clear();
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _priceController.dispose();
-    _stockController.dispose();
-    super.dispose();
+    if (result == true) _loadProducts(); // Recargar si hubo cambios
   }
 }

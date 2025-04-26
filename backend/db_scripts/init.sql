@@ -1,14 +1,27 @@
-CREATE DATABASE IF NOT EXISTS sales_app;
+CREATE DATABASE sales_app;
+
 USE sales_app;
 
-CREATE TABLE IF NOT EXISTS products (
+-- Tabla de productos
+CREATE TABLE products (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  price DECIMAL(10,2) NOT NULL,
-  stock INT DEFAULT 0,
-  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  name VARCHAR(100) NOT NULL,
+  price DECIMAL(10, 2) NOT NULL,
+  stock INT NOT NULL DEFAULT 0
 );
 
-INSERT INTO products (name, price, stock) VALUES 
-  ('Laptop', 999.99, 10),
-  ('Teléfono', 599.50, 20);
+-- Tabla de ventas
+CREATE TABLE sales (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_id INT NOT NULL,
+  quantity INT NOT NULL,
+  total DECIMAL(10, 2) NOT NULL,
+  date DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+-- Insertar datos de ejemplo
+INSERT INTO products (name, price, stock) VALUES
+  ('Laptop HP', 1200.00, 15),
+  ('Mouse Logitech', 25.50, 30),
+  ('Teclado Mecánico', 80.00, 20);
