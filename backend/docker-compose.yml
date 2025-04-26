@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  node_app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: node_container
+    ports:
+      - "5000:5000"  # Puerto para Node.js
+    environment:
+      - DB_HOST=host.docker.internal  # Conexión al XAMPP
+      - DB_PORT=3306                 # Puerto de XAMPP
+      - DB_USER=root                 # Usuario de XAMPP
+      - DB_PASSWORD=                 # Contraseña (vacía por defecto)
+      - DB_NAME=sales_app
+    volumes:
+      - .:/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Necesario en Linux
+    restart: unless-stopped
+
+# ¡No necesitamos el servicio mysql_db ni volúmenes!
